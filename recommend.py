@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv, find_dotenv
 import spotipy
 import spotipy.util as util
 import json
@@ -29,7 +30,10 @@ def get_related_artists(i):
         allTracks.clear()
 
 
-username = "oguzcancelik"
+dotenv_path = find_dotenv()
+load_dotenv(dotenv_path)
+
+username = os.environ.get("spotifyUsername")
 scope = 'user-read-private ' \
         'user-read-playback-state ' \
         'user-modify-playback-state ' \
@@ -44,10 +48,10 @@ except(AttributeError, JSONDecodeError):
     os.remove(f".cache-{username}")
     token = util.prompt_for_user_token(username, scope)
 
-API_KEY = "***"
-API_SECRET = "***"
-usernameL = "oguzcancelk"
-password_hash = pylast.md5("***")
+API_KEY = os.environ.get("API_KEY")
+API_SECRET = os.environ.get("API_SECRET")
+usernameL = os.environ.get("lastfmUsername")
+password_hash = pylast.md5(os.environ.get("password_hash"))
 
 spotify = spotipy.Spotify(auth=token)
 lastfm = pylast.LastFMNetwork(api_key=API_KEY, api_secret=API_SECRET, username=usernameL, password_hash=password_hash)
@@ -92,6 +96,7 @@ while True:
     elif choice == "2":
         artist = input("\nType artist name: ")
         song = input("\nType song name: ")
+        print("\nSearching for the songs..\n")
         similarSongs = pylast.Track(artist, song, lastfm).get_similar(limit=20)
         for i in similarSongs:
             allTracks.append(i.item)
@@ -106,12 +111,15 @@ while True:
     else:
         print("Input must be one of the followings.")
         continue
-    print("\nSearching for the songs..\n")
     if len(artists) != 0:
+        print("\nSearching for the songs..\n")
         for i in artists['items']:
             get_related_artists(i['id'])
-    spotify.user_playlist_add_tracks("oguzcancelik", "44uE9HX0RaoCHjXErRWZJD", recommendTracks, position=None)
-    print(str(len(recommendTracks)) + " recommendedsongs added to the playlist.\n")
+    if len(recommendTracks) != 0:
+        spotify.user_playlist_add_tracks("oguzcancelik", "44uE9HX0RaoCHjXErRWZJD", recommendTracks, position=None)
+        print(str(len(recommendTracks)) + " recommended songs added to the playlist.\n")
+    else:
+        print("\nNo recommendations found\n")
     recommendTracks.clear()
     artists.clear()
 
