@@ -23,10 +23,14 @@ def get_albums(i):
 
 def get_related_artists(i):
     global allTracks, recommendTracks
-    i = spotify.artist_related_artists(i)
-    for j in i['artists']:
+    k = spotify.artist_related_artists(i)
+    for j in k['artists']:
         get_albums(j['id'])
-        recommendTracks.append(random.choice(allTracks))
+        for m in range(10):
+            if len(allTracks):
+                rand = random.randint(0, len(allTracks) - 1)
+                recommendTracks.append(allTracks[rand])
+                del allTracks[rand]
         allTracks.clear()
 
 
@@ -128,7 +132,11 @@ while True:
             j = j['tracks']['items'][0]['id']
             recommendTracks.append(str(j))
     if len(recommendTracks) != 0:
-        spotify.user_playlist_add_tracks("oguzcancelik", "44uE9HX0RaoCHjXErRWZJD", recommendTracks, position=None)
+        i = 0
+        while i < len(recommendTracks):
+            spotify.user_playlist_add_tracks("oguzcancelik", "44uE9HX0RaoCHjXErRWZJD", recommendTracks[i:i + 100],
+                                             position=None)
+            i += 100
         print(str(len(recommendTracks)) + " recommended songs added to the playlist.\n")
     else:
         print("\nNo recommendations found\n")
