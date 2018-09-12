@@ -19,9 +19,10 @@ def find_tracks_in_spotify():
 def select_songs(song_number):
     global artist_tracks, recommended_tracks
     for i in range(song_number):
-        randon_number = random.randint(0, len(artist_tracks) - 1)
-        recommended_tracks.append(artist_tracks[randon_number])
-        del artist_tracks[randon_number]
+        if len(artist_tracks) > 0:
+            randon_number = random.randint(0, len(artist_tracks) - 1)
+            recommended_tracks.append(artist_tracks[randon_number])
+            del artist_tracks[randon_number]
 
 
 def get_tracks(album_id):
@@ -31,24 +32,24 @@ def get_tracks(album_id):
         artist_tracks.append(track['id'])
 
 
-def get_albums(artist_id):
-    albums = spotify.artist_albums(artist_id=artist_id, album_type="album", limit=10)
+def get_albums(artist_id, album_number=5):
+    albums = spotify.artist_albums(artist_id=artist_id, album_type="album", limit=album_number)
     for album in albums['items']:
         get_tracks(album['id'])
 
 
-def get_by_artist(artist_name):
+def get_by_artist(artist_name, song_number=30):
     global artist_tracks
     artist = spotify.search(artist_name, 1, 0, "artist")
     if artist['artists']['total'] > 0:
-        get_albums(artist['artists']['items'][0]['id'])
-        select_songs(30)
+        get_albums(artist['artists']['items'][0]['id'], 15)
+        select_songs(song_number)
         artist_tracks.clear()
     else:
         return False
 
 
-def get_by_related_artists(artist_name):
+def get_by_related_artists(artist_name, song_number=4):
     global artist_tracks
     artist = spotify.search(artist_name, 1, 0, "artist")
     if artist['artists']['total'] > 0:
@@ -57,7 +58,7 @@ def get_by_related_artists(artist_name):
             related_artists['artists'].append({'id': artist['artists']['items'][0]['id']})
             for related_artist in related_artists['artists']:
                 get_albums(related_artist['id'])
-                select_songs(4)
+                select_songs(song_number)
                 artist_tracks.clear()
         else:
             return False
@@ -151,21 +152,40 @@ def get_playlist_id(playlist_name):
     return playlist['id']
 
 
-def add_to_playlist(playlist_name):
+def get_by_playlist(playlist_name):
     get_user_playlists()
-    playlist_id = get_playlist_id(playlist_name)
-    # playlist_id = playlist_name
-    for i in range(0, len(recommended_tracks), 100):
-        spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
+    playlists_id = get_playlist_id(playlist_name)
+    artist_names = []
+    tracks = spotify.user_playlist_tracks(spotify_username, playlists_id, fields="items")
+    for track in tracks['items']:
+        artist_name = track['track']['artists'][0]['name']
+        if artist_name not in artist_names:
+            artist_names.append(artist_name)
+    for i in range(5):
+        randon_number = random.randint(0, len(artist_names) - 1)
+        get_by_related_artists(artist_name=artist_names[randon_number], song_number=1)
+        if len(artist_names) > 5:
+            del artist_names[randon_number]
+
+
+def add_to_playlist(playlist_name):
+    if len(recommended_tracks) > 0:
+        get_user_playlists()
+        playlist_id = get_playlist_id(playlist_name)
+        # playlist_id = playlist_name
+        for i in range(0, len(recommended_tracks), 100):
+            spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
 
 
 def override_playlist(playlist_name):
-    get_user_playlists()
-    playlist_id = get_playlist_id(playlist_name)
-    # playlist_id = playlist_name
-    spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
-    for i in range(100, len(recommended_tracks), 100):
-        spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[i:i + 100])
+    if len(recommended_tracks) > 0:
+        get_user_playlists()
+        get_user_playlists()
+        playlist_id = get_playlist_id(playlist_name)
+        # playlist_id = playlist_name
+        spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
+        for i in range(100, len(recommended_tracks), 100):
+            spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[i:i + 100])
 
 
 dotenv_path = find_dotenv()
