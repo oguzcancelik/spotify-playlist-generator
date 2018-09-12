@@ -37,6 +37,17 @@ def get_albums(artist_id):
         get_tracks(album['id'])
 
 
+def get_by_artist(artist_name):
+    global artist_tracks
+    artist = spotify.search(artist_name, 1, 0, "artist")
+    if artist['artists']['total'] > 0:
+        get_albums(artist['artists']['items'][0]['id'])
+        select_songs(30)
+        artist_tracks.clear()
+    else:
+        return False
+
+
 def get_by_related_artists(artist_name):
     global artist_tracks
     artist = spotify.search(artist_name, 1, 0, "artist")
@@ -50,17 +61,6 @@ def get_by_related_artists(artist_name):
                 artist_tracks.clear()
         else:
             return False
-    else:
-        return False
-
-
-def get_by_artist(artist_name):
-    global artist_tracks
-    artist = spotify.search(artist_name, 1, 0, "artist")
-    if artist['artists']['total'] > 0:
-        get_albums(artist['artists']['items'][0]['id'])
-        select_songs(30)
-        artist_tracks.clear()
     else:
         return False
 
@@ -90,7 +90,7 @@ def get_by_genres(genres):
 def get_by_song(artist_name, song_name):
     global last_fm_tracks
     try:
-        last_fm_tracks = pylast.Track(artist_name, song_name, lastfm).get_similar(limit=40)
+        last_fm_tracks = pylast.Track(artist_name, song_name, last_fm_network).get_similar(limit=40)
     except pylast.WSError:
         return False
     find_tracks_in_spotify()
@@ -98,7 +98,7 @@ def get_by_song(artist_name, song_name):
 
 def get_by_tag(tag_name):
     global last_fm_tracks
-    last_fm_tracks = pylast.Tag(name=tag_name, network=lastfm).get_top_tracks(cacheable=False, limit=120)
+    last_fm_tracks = pylast.Tag(name=tag_name, network=last_fm_network).get_top_tracks(cacheable=False, limit=120)
     if last_fm_tracks is None:
         return False
     if len(last_fm_tracks) >= 80:
@@ -106,21 +106,66 @@ def get_by_tag(tag_name):
     find_tracks_in_spotify()
 
 
+def get_by_recently_played():
+    global artist_tracks
+    recently_played_artists = []
+    recently_played_tracks = spotify.current_user_recently_played()
+    for track in recently_played_tracks['items']:
+        artist_id = track['track']['artists'][0]['id']
+        if artist_id not in recently_played_artists:
+            recently_played_artists.append(artist_id)
+            get_albums(artist_id)
+            select_songs(2)
+            artist_tracks.clear()
+
+
+def get_by_new_releases():
+    global artist_tracks
+    new_releases = spotify.new_releases(country="TR")
+    for album in new_releases['albums']['items']:
+        get_tracks(album['id'])
+        select_songs(2)
+        artist_tracks.clear()
+
+
 def get_tag_artist(tag_name):
-    artists = pylast.Tag(name=tag_name, network=lastfm).get_top_artists(cacheable=False, limit=120)
+    artists = pylast.Tag(name=tag_name, network=last_fm_network).get_top_artists(cacheable=False, limit=120)
     for artist in artists:
         print(artist.item)
 
 
-def add_to_playlist():
+def get_user_playlists():
+    global playlists
+    user_playlists = spotify.current_user_playlists(limit=50, offset=0)
+    for playlist in user_playlists['items']:
+        if playlist['owner']['id'] == spotify_username:
+            playlists.append({'id': playlist['id'], 'name': playlist['name']})
+
+
+def get_playlist_id(playlist_name):
+    global playlists
+    for playlist in playlists:
+        if playlist_name == playlist['name']:
+            return playlist['id']
+    playlist = spotify.user_playlist_create(spotify_username, playlist_name, public=False)
+    return playlist['id']
+
+
+def add_to_playlist(playlist_name):
+    get_user_playlists()
+    playlist_id = get_playlist_id(playlist_name)
+    # playlist_id = playlist_name
     for i in range(0, len(recommended_tracks), 100):
-        spotify.user_playlist_add_tracks("oguzcancelik", "44uE9HX0RaoCHjXErRWZJD", recommended_tracks[i:i + 100])
+        spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
 
 
-def override_playlist():
-    spotify.user_playlist_replace_tracks("oguzcancelik", "44uE9HX0RaoCHjXErRWZJD", recommended_tracks[:100])
+def override_playlist(playlist_name):
+    get_user_playlists()
+    playlist_id = get_playlist_id(playlist_name)
+    # playlist_id = playlist_name
+    spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
     for i in range(100, len(recommended_tracks), 100):
-        spotify.user_playlist_add_tracks("oguzcancelik", "44uE9HX0RaoCHjXErRWZJD", recommended_tracks[i:i + 100])
+        spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[i:i + 100])
 
 
 dotenv_path = find_dotenv()
@@ -136,7 +181,8 @@ scope = 'user-read-private ' \
         'playlist-modify-public ' \
         'playlist-modify-private ' \
         'user-read-recently-played ' \
-        'user-top-read'
+        'user-top-read ' \
+        'playlist-read-private'
 
 try:
     token = util.prompt_for_user_token(spotify_username, scope, client_id, client_secret, redirect_uri)
@@ -149,12 +195,12 @@ API_KEY = os.environ.get("API_KEY")
 API_SECRET = os.environ.get("API_SECRET")
 last_fm_username = os.environ.get("last_fm_username")
 password_hash = pylast.md5(os.environ.get("password_hash"))
-lastfm = pylast.LastFMNetwork(api_key=API_KEY, api_secret=API_SECRET, username=last_fm_username,
-                              password_hash=password_hash)
+last_fm_network = pylast.LastFMNetwork(api_key=API_KEY, api_secret=API_SECRET,
+                                       username=last_fm_username, password_hash=password_hash)
 
 artist_tracks = []
 recommended_tracks = []
 last_fm_tracks = []
-
+playlists = []
 # print(json.dumps(artist, sort_keys=True, indent=4))
 # quit()

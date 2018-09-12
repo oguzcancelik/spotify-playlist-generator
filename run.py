@@ -1,12 +1,14 @@
 from spotify import *
 
-get_by_artist("The Smiths")
-get_by_related_artists("Kasabian")
+get_by_artist("Don Mclean)
+get_by_related_artists("Mumford & Sons")
 get_by_genres(["acoustic", "piano", "rainy-day"])
-get_by_song("Clogs", "Last Song")
+get_by_song("Kodaline", "Way Back When")
 get_by_top_artists("long_term")
 get_by_tag("melancholic")
-add_to_playlist()
+get_tag_artist("chillout")  # TODO make it useful
+get_by_recently_played()
+get_by_new_releases()
 
-# get_tag_artist("chillout") # TODO make it useful
-# override_playlist()
+add_to_playlist("recommended songs")
+override_playlist("recommended songs")  # TODO make playlist settings
