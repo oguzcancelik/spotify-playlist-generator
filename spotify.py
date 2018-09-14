@@ -129,6 +129,22 @@ def get_by_new_releases():
         artist_tracks.clear()
 
 
+def get_by_playlist(playlist_name):
+    get_user_playlists()
+    playlists_id = get_playlist_id(playlist_name)
+    artist_names = []
+    tracks = spotify.user_playlist_tracks(spotify_username, playlists_id, fields="items")
+    for track in tracks['items']:
+        artist_name = track['track']['artists'][0]['name']
+        if artist_name not in artist_names:
+            artist_names.append(artist_name)
+    for i in range(5):
+        randon_number = random.randint(0, len(artist_names) - 1)
+        get_by_related_artists(artist_name=artist_names[randon_number], song_number=1)
+        if len(artist_names) > 5:
+            del artist_names[randon_number]
+
+
 def get_tag_artist(tag_name):
     artists = pylast.Tag(name=tag_name, network=last_fm_network).get_top_artists(cacheable=False, limit=120)
     for artist in artists:
@@ -152,34 +168,17 @@ def get_playlist_id(playlist_name):
     return playlist['id']
 
 
-def get_by_playlist(playlist_name):
-    get_user_playlists()
-    playlists_id = get_playlist_id(playlist_name)
-    artist_names = []
-    tracks = spotify.user_playlist_tracks(spotify_username, playlists_id, fields="items")
-    for track in tracks['items']:
-        artist_name = track['track']['artists'][0]['name']
-        if artist_name not in artist_names:
-            artist_names.append(artist_name)
-    for i in range(5):
-        randon_number = random.randint(0, len(artist_names) - 1)
-        get_by_related_artists(artist_name=artist_names[randon_number], song_number=1)
-        if len(artist_names) > 5:
-            del artist_names[randon_number]
-
-
 def add_to_playlist(playlist_name):
     if len(recommended_tracks) > 0:
         get_user_playlists()
         playlist_id = get_playlist_id(playlist_name)
         # playlist_id = playlist_name
         for i in range(0, len(recommended_tracks), 100):
-            spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
+            spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[:100])
 
 
-def override_playlist(playlist_name):
+def overwrite_playlist(playlist_name):
     if len(recommended_tracks) > 0:
-        get_user_playlists()
         get_user_playlists()
         playlist_id = get_playlist_id(playlist_name)
         # playlist_id = playlist_name
@@ -187,6 +186,9 @@ def override_playlist(playlist_name):
         for i in range(100, len(recommended_tracks), 100):
             spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[i:i + 100])
 
+def delete_tracks():
+    global recommended_tracks
+    recommended_tracks.clear()
 
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
