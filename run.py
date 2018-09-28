@@ -68,9 +68,17 @@ while True:
         choice = input("Your choice: ")
         if choice == "0":
             add_to_playlist(name)
+            print("\nPress 1 to Start Playing\n")
+            play_choice = input("")
+            if play_choice == "1":
+                play()
             break
         elif choice == "1":
             overwrite_playlist(name)
+            print("\nPress 1 to Start Playing\n")
+            play_choice = input("")
+            if play_choice == "1":
+                play()
             break
         elif choice == "2":
             break

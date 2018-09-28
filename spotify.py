@@ -169,6 +169,7 @@ def get_playlist_id(playlist_name):
 
 
 def add_to_playlist(playlist_name):
+    global playlist_id
     if len(recommended_tracks) > 0:
         get_user_playlists()
         playlist_id = get_playlist_id(playlist_name)
@@ -178,6 +179,7 @@ def add_to_playlist(playlist_name):
 
 
 def overwrite_playlist(playlist_name):
+    global playlist_id
     if len(recommended_tracks) > 0:
         get_user_playlists()
         playlist_id = get_playlist_id(playlist_name)
@@ -186,9 +188,17 @@ def overwrite_playlist(playlist_name):
         for i in range(100, len(recommended_tracks), 100):
             spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[i:i + 100])
 
+
 def delete_tracks():
     global recommended_tracks
     recommended_tracks.clear()
+
+
+def play():
+    playlist_uri = spotify.user_playlist(user=spotify_username, playlist_id=playlist_id)
+    spotify.start_playback(context_uri=playlist_uri['uri'])
+    spotify.shuffle(state=True)
+
 
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
@@ -224,5 +234,6 @@ artist_tracks = []
 recommended_tracks = []
 last_fm_tracks = []
 playlists = []
+playlist_id = ""
 # print(json.dumps(artist, sort_keys=True, indent=4))
 # quit()
