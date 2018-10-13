@@ -6,6 +6,7 @@ import json
 from json.decoder import JSONDecodeError
 import random
 import pylast
+import sqlite3
 
 
 def find_tracks_in_spotify():
@@ -30,22 +31,35 @@ def select_songs(song_number):
 
 def get_tracks(album_id):
     global artist_tracks
-    tracks = spotify.album_tracks(album_id)
-    for track in tracks['items']:
+    album = spotify.album(album_id)
+    for track in album['tracks']['items']:
+        with connection:
+            c.execute("""INSERT INTO track VALUES(?,?,?,?,?)""",
+                      (track['id'], track['artists'][0]['id'], track['artists'][0]['name'],
+                       album['release_date'][0:4], track['name']))
         artist_tracks.append(track['id'])
 
 
-def get_albums(artist_id, album_number=5):
-    albums = spotify.artist_albums(artist_id=artist_id, album_type="album", limit=album_number)
-    for album in albums['items']:
-        get_tracks(album['id'])
+def get_albums(artist_id):
+    types = [["album", 50], ["single", 20], ["compilation", 10]]
+    for album_type in types:
+        albums = spotify.artist_albums(artist_id=artist_id, album_type=album_type[0], limit=album_type[1])
+        for album in albums['items']:
+            get_tracks(album['id'])
 
 
 def get_by_artist(artist_name, song_number=30):
-    global artist_tracks
+    global artist_tracks, recommended_tracks
+    c.execute("""SELECT track_id FROM track WHERE artist_name=?  COLLATE NOCASE""", (artist_name,))
+    artist_tracks = c.fetchall()
+    if artist_tracks:
+        c.execute("select track_id from track where artist_name='Green Day' ORDER BY RANDOM() LIMIT 30")
+        result = c.fetchall()
+        recommended_tracks = [x[0] for x in result]
+        return True
     artist = spotify.search(artist_name, 1, 0, "artist")
     if artist['artists']['total'] > 0:
-        get_albums(artist['artists']['items'][0]['id'], 15)
+        get_albums(artist['artists']['items'][0]['id'])
         select_songs(song_number)
         artist_tracks.clear()
         return True
@@ -58,7 +72,7 @@ def get_by_related_artists(artist_name, song_number=4):
     artist = spotify.search(artist_name, 1, 0, "artist")
     if artist['artists']['total'] > 0:
         related_artists = spotify.artist_related_artists(artist['artists']['items'][0]['id'])
-        if len(related_artists['artists']) > 0:
+        if related_artists['artists']:
             related_artists['artists'].append({'id': artist['artists']['items'][0]['id']})
             for related_artist in related_artists['artists']:
                 get_albums(related_artist['id'])
@@ -263,10 +277,18 @@ password_hash = pylast.md5(os.environ.get("password_hash"))
 last_fm_network = pylast.LastFMNetwork(api_key=API_KEY, api_secret=API_SECRET,
                                        username=last_fm_username, password_hash=password_hash)
 
+connection = sqlite3.connect('spotify.sqlite3')
+c = connection.cursor()
+
 artist_tracks = []
 recommended_tracks = []
 last_fm_tracks = []
 playlists = []
 playlist_id = ""
+
+# c.execute("SELECT * FROM track ")
+# result = c.fetchall()
+# connection.close()
+
 # print(json.dumps(artist, sort_keys=True, indent=4))
 # quit()
