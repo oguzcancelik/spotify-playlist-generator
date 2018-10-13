@@ -8,6 +8,8 @@ import random
 import pylast
 import sqlite3
 
+from spotipy import SpotifyException
+
 
 def find_tracks_in_spotify():
     global last_fm_tracks
@@ -48,41 +50,56 @@ def get_albums(artist_id):
             get_tracks(album['id'])
 
 
-def get_by_artist(artist_name, song_number=30):
+def get_by_artist(artist, song_number=30):
     global artist_tracks, recommended_tracks
-    c.execute("""SELECT track_id FROM track WHERE artist_name=?  COLLATE NOCASE""", (artist_name,))
-    artist_tracks = c.fetchall()
-    if artist_tracks:
-        c.execute("select track_id from track where artist_name='Green Day' ORDER BY RANDOM() LIMIT 30")
-        result = c.fetchall()
-        recommended_tracks = [x[0] for x in result]
+    c.execute("""SELECT COUNT(track_id) FROM track WHERE artist_name=? OR artist_id=? COLLATE NOCASE""",
+              (artist, artist))
+    track_number = c.fetchone()[0]
+    if track_number > 0:
+        c.execute(
+            "SELECT track_id FROM track WHERE artist_name=? OR artist_id=? COLLATE NOCASE ORDER BY RANDOM() LIMIT ?",
+            (artist, artist, song_number))
+        artist_tracks = c.fetchall()
+        for x in artist_tracks:
+            recommended_tracks.append(x[0])
         return True
-    artist = spotify.search(artist_name, 1, 0, "artist")
-    if artist['artists']['total'] > 0:
-        get_albums(artist['artists']['items'][0]['id'])
-        select_songs(song_number)
-        artist_tracks.clear()
-        return True
-    else:
-        return False
+    try:
+        spotify.artist(artist)
+    except SpotifyException:
+        artist = spotify.search(artist, 1, 0, "artist")
+        if artist['artists']['total'] > 0:
+            artist = artist['artists']['items'][0]['id']
+        else:
+            return False
+    get_albums(artist)
+    select_songs(song_number)
+    artist_tracks.clear()
+    return True
 
 
-def get_by_related_artists(artist_name, song_number=4):
-    global artist_tracks
+def get_by_related_artists(artist_name):
+    c.execute("""SELECT COUNT(similar_artist_id) FROM similar_artists WHERE artist_name=? COLLATE NOCASE""",
+              (artist_name,))
+    artist_number = c.fetchone()[0]
+    if artist_number > 0:
+        c.execute("SELECT similar_artist_id FROM similar_artists WHERE artist_name=? COLLATE NOCASE",
+                  (artist_name,))
+        related_artists = c.fetchall()
+        for artist in related_artists:
+            get_by_artist(artist[0], 5)
+        return True
     artist = spotify.search(artist_name, 1, 0, "artist")
     if artist['artists']['total'] > 0:
         related_artists = spotify.artist_related_artists(artist['artists']['items'][0]['id'])
         if related_artists['artists']:
             related_artists['artists'].append({'id': artist['artists']['items'][0]['id']})
             for related_artist in related_artists['artists']:
-                get_albums(related_artist['id'])
-                select_songs(song_number)
-                artist_tracks.clear()
+                with connection:
+                    c.execute("""INSERT INTO similar_artists VALUES(?,?)""",
+                              (artist_name, related_artist['id']))
+                get_by_artist(related_artist['id'], 5)
             return True
-        else:
-            return False
-    else:
-        return False
+    return False
 
 
 def get_by_top_artists(term):
