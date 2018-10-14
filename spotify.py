@@ -52,14 +52,11 @@ def get_albums(artist_id):
 
 def get_by_artist(artist, song_number=30):
     global artist_tracks, recommended_tracks
-    c.execute("""SELECT COUNT(track_id) FROM track WHERE artist_name=? OR artist_id=? COLLATE NOCASE""",
-              (artist, artist))
-    track_number = c.fetchone()[0]
-    if track_number > 0:
-        c.execute(
-            "SELECT track_id FROM track WHERE artist_name=? OR artist_id=? COLLATE NOCASE ORDER BY RANDOM() LIMIT ?",
-            (artist, artist, song_number))
-        artist_tracks = c.fetchall()
+    c.execute(
+        """SELECT track_id FROM track WHERE artist_name=? COLLATE NOCASE OR artist_id=?
+        COLLATE NOCASE ORDER BY RANDOM() LIMIT ?""", (artist, artist, song_number))
+    artist_tracks = c.fetchall()
+    if artist_tracks:
         for x in artist_tracks:
             recommended_tracks.append(x[0])
         return True
@@ -78,13 +75,9 @@ def get_by_artist(artist, song_number=30):
 
 
 def get_by_related_artists(artist_name):
-    c.execute("""SELECT COUNT(similar_artist_id) FROM similar_artists WHERE artist_name=? COLLATE NOCASE""",
-              (artist_name,))
-    artist_number = c.fetchone()[0]
-    if artist_number > 0:
-        c.execute("SELECT similar_artist_id FROM similar_artists WHERE artist_name=? COLLATE NOCASE",
-                  (artist_name,))
-        related_artists = c.fetchall()
+    c.execute("SELECT similar_artist_id FROM similar_artists WHERE artist_name=? COLLATE NOCASE", (artist_name,))
+    related_artists = c.fetchall()
+    if related_artists:
         for artist in related_artists:
             get_by_artist(artist[0], 5)
         return True
@@ -121,13 +114,22 @@ def get_all_genres():
 
 def get_by_genres(genres):
     global recommended_tracks
-    # all_genres = spotify.recommendation_genre_seeds()
-    tracks = spotify.recommendations(limit=50, seed_genres=genres, country="TR")
-    if len(tracks['tracks']) == 0:
-        return False
-    for track in tracks['tracks']:
-        recommended_tracks.append(track['id'])
-    return True
+    for genre in genres:
+        c.execute("SELECT track_id from genre_popular_tracks WHERE genre_name=? COLLATE NOCASE", (genre,))
+        genre_tracks = c.fetchall()
+        if genre_tracks:
+            for x in genre_tracks:
+                recommended_tracks.append(x[0])
+            continue
+        # all_genres = spotify.recommendation_genre_seeds()
+        tracks = spotify.recommendations(limit=50, seed_genres=[genre], country="TR")
+        for track in tracks['tracks']:
+            with connection:
+                c.execute("""INSERT INTO genre_popular_tracks VALUES(?,?)""", (genre, track['id']))
+            recommended_tracks.append(track['id'])
+    if recommended_tracks:
+        return True
+    return False
 
 
 def get_by_song(artist_name, song_name):
@@ -241,8 +243,9 @@ def add_to_playlist(playlist_name):
         get_user_playlists()
         playlist_id = get_playlist_id(playlist_name)
         # playlist_id = playlist_name
+        random.shuffle(recommended_tracks)
         for i in range(0, len(recommended_tracks), 100):
-            spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[:100])
+            spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[i:i + 100])
 
 
 def overwrite_playlist(playlist_name):
@@ -251,6 +254,7 @@ def overwrite_playlist(playlist_name):
         get_user_playlists()
         playlist_id = get_playlist_id(playlist_name)
         # playlist_id = playlist_name
+        random.shuffle(recommended_tracks)
         spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
         for i in range(100, len(recommended_tracks), 100):
             spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[i:i + 100])
