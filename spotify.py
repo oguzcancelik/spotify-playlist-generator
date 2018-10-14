@@ -52,9 +52,8 @@ def get_albums(artist_id):
 
 def get_by_artist(artist, song_number=30):
     global artist_tracks, recommended_tracks
-    c.execute(
-        """SELECT track_id FROM track WHERE artist_name=? COLLATE NOCASE OR artist_id=?
-        COLLATE NOCASE ORDER BY RANDOM() LIMIT ?""", (artist, artist, song_number))
+    c.execute("""SELECT track_id FROM track WHERE artist_name=? COLLATE NOCASE OR artist_id=?
+              COLLATE NOCASE ORDER BY RANDOM() LIMIT ?""", (artist, artist, song_number))
     artist_tracks = c.fetchall()
     if artist_tracks:
         for x in artist_tracks:
@@ -76,6 +75,8 @@ def get_by_artist(artist, song_number=30):
 
 def get_by_related_artists(artist_name):
     c.execute("SELECT similar_artist_id FROM similar_artists WHERE artist_name=? COLLATE NOCASE", (artist_name,))
+    # TODO c.execute("""SELECT * from track where artist_id in
+    # (SELECT similar_artist_id from similar_artists where artist_name=? COLLATE nocase)""", (artist_name,))
     related_artists = c.fetchall()
     if related_artists:
         for artist in related_artists:
@@ -89,7 +90,7 @@ def get_by_related_artists(artist_name):
             for related_artist in related_artists['artists']:
                 with connection:
                     c.execute("""INSERT INTO similar_artists VALUES(?,?)""",
-                              (artist_name, related_artist['id']))
+                              (artist['artists']['items'][0]['name'], related_artist['id']))
                 get_by_artist(related_artist['id'], 5)
             return True
     return False
@@ -115,7 +116,7 @@ def get_all_genres():
 def get_by_genres(genres):
     global recommended_tracks
     for genre in genres:
-        c.execute("SELECT track_id from genre_popular_tracks WHERE genre_name=? COLLATE NOCASE", (genre,))
+        c.execute("SELECT track_id FROM genre_popular_tracks WHERE genre_name=? COLLATE NOCASE", (genre,))
         genre_tracks = c.fetchall()
         if genre_tracks:
             for x in genre_tracks:
@@ -275,6 +276,16 @@ def play():
     return False
 
 
+def updatetoken():
+    global spotify, token
+    try:
+        token = util.prompt_for_user_token(spotify_username, scope, client_id, client_secret, redirect_uri)
+    except(AttributeError, JSONDecodeError):
+        os.remove(f".cache-{spotify_username}")
+        token = util.prompt_for_user_token(spotify_username, scope, client_id, client_secret, redirect_uri)
+    spotify = spotipy.Spotify(auth=token)
+
+
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
 
@@ -306,10 +317,6 @@ recommended_tracks = []
 last_fm_tracks = []
 playlists = []
 playlist_id = ""
-
-# c.execute("SELECT * FROM track ")
-# result = c.fetchall()
-# connection.close()
 
 # print(json.dumps(artist, sort_keys=True, indent=4))
 # quit()
