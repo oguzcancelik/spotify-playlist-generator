@@ -158,6 +158,10 @@ def get_by_recently_played():
     recently_played_tracks = spotify.current_user_recently_played()
     if len(recently_played_tracks['items']) > 0:
         for track in recently_played_tracks['items']:
+            #print(track['track']['artists'][0]['name'])
+            #get_by_related_artists(track['track']['artists'][0]['name'])
+            #updatetoken()
+            #continue
             artist_id = track['track']['artists'][0]['id']
             if artist_id not in recently_played_artists:
                 recently_played_artists.append(artist_id)
@@ -274,6 +278,18 @@ def play():
         spotify.shuffle(state=True)
         return True
     return False
+
+
+def find_artist_genre():
+    c.execute("""SELECT DISTINCT artist_id FROM track WHERE artist_name NOT IN
+            (SELECT DISTINCT artist_name FROM artist_genre)""")
+    artists = c.fetchall()
+    for i in artists:
+        artist = spotify.artist(i[0])
+        if artist['genres']:
+            for genre in artist['genres']:
+                with connection:
+                    c.execute("""INSERT INTO artist_genre VALUES (?, ?)""", (artist['name'], genre))
 
 
 def updatetoken():
