@@ -14,6 +14,12 @@ from spotipy import SpotifyException
 def find_tracks_in_spotify():
     global last_fm_tracks
     for last_fm_track in last_fm_tracks:
+        c.execute("""SELECT track_id FROM track WHERE artist_name=? COLLATE NOCASE AND track_name=? COLLATE NOCASE""",
+                  (str(last_fm_track.item.get_artist()), str(last_fm_track.item.get_name())))
+        track = c.fetchone()
+        if track:
+            recommended_tracks.append(track[0])
+            continue
         track = spotify.search(last_fm_track.item, 1, 0, "track")
         if track['tracks']['total'] > 0:
             recommended_tracks.append(track['tracks']['items'][0]['id'])
@@ -99,12 +105,9 @@ def get_by_top_artists(term):
     top_artists = spotify.current_user_top_artists(limit=20, offset=0, time_range=term)
     if top_artists['total'] > 0:
         for artist in top_artists['items']:
-            get_albums(artist['id'])
-            select_songs(5)
-            artist_tracks.clear()
+            get_by_artist(artist['id'], 5)
         return True
-    else:
-        return False
+    return False
 
 
 def get_all_genres():
@@ -160,12 +163,9 @@ def get_by_recently_played():
             artist_id = track['track']['artists'][0]['id']
             if artist_id not in recently_played_artists:
                 recently_played_artists.append(artist_id)
-                get_albums(artist_id)
-                select_songs(2)
-                artist_tracks.clear()
+                get_by_artist(artist_id, 2)
         return True
-    else:
-        return False
+    return False
 
 
 def get_by_new_releases():

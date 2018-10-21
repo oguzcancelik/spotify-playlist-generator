@@ -95,13 +95,13 @@ while True:
     else:
         print("\nWrong input. Please make another choice.\n")
         continue
-    name = input("\nType playlist name: ")
     while True:
         print("\n0 - Add tracks to playlist")
         print("1 - Overwrite playlist")
         print("2 - Do Nothing\n")
         choice = input("Your choice: ")
         if choice == "0":
+            name = input("\nType playlist name: ")
             add_to_playlist(name)
             print("\nPress 1 to Start Playing\n")
             play_choice = input("")
@@ -109,6 +109,7 @@ while True:
                 play()
             break
         elif choice == "1":
+            name = input("\nType playlist name: ")
             overwrite_playlist(name)
             print("\nPress 1 to Start Playing\n")
             play_choice = input("")
