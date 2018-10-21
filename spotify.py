@@ -75,8 +75,6 @@ def get_by_artist(artist, song_number=30):
 
 def get_by_related_artists(artist_name):
     c.execute("SELECT similar_artist_id FROM similar_artists WHERE artist_name=? COLLATE NOCASE", (artist_name,))
-    # TODO c.execute("""SELECT * from track where artist_id in
-    # (SELECT similar_artist_id from similar_artists where artist_name=? COLLATE nocase)""", (artist_name,))
     related_artists = c.fetchall()
     if related_artists:
         for artist in related_artists:
@@ -123,7 +121,7 @@ def get_by_genres(genres):
                 recommended_tracks.append(x[0])
             continue
         # all_genres = spotify.recommendation_genre_seeds()
-        tracks = spotify.recommendations(limit=50, seed_genres=[genre], country="TR")
+        tracks = spotify.recommendations(limit=5, seed_genres=[genre], country="TR")
         for track in tracks['tracks']:
             with connection:
                 c.execute("""INSERT INTO genre_popular_tracks VALUES(?,?)""", (genre, track['id']))
@@ -134,6 +132,7 @@ def get_by_genres(genres):
 
 
 def get_by_song(artist_name, song_name):
+    # TODO tracks = spotify.recommendations(seed_tracks=["0pPfdjMQYpXlgGYJUrSzyZ"], limit=20)
     global last_fm_tracks
     try:
         last_fm_tracks = pylast.Track(artist_name, song_name, last_fm_network).get_similar(limit=40)
@@ -158,10 +157,6 @@ def get_by_recently_played():
     recently_played_tracks = spotify.current_user_recently_played()
     if len(recently_played_tracks['items']) > 0:
         for track in recently_played_tracks['items']:
-            #print(track['track']['artists'][0]['name'])
-            #get_by_related_artists(track['track']['artists'][0]['name'])
-            #updatetoken()
-            #continue
             artist_id = track['track']['artists'][0]['id']
             if artist_id not in recently_played_artists:
                 recently_played_artists.append(artist_id)
@@ -270,6 +265,11 @@ def delete_tracks():
     recommended_tracks.clear()
 
 
+def set_tracks(songs):
+    global recommended_tracks
+    recommended_tracks = songs
+
+
 def play():
     playlist_uri = spotify.user_playlist(user=spotify_username, playlist_id=playlist_id)
     devices = spotify.devices()
@@ -278,18 +278,6 @@ def play():
         spotify.shuffle(state=True)
         return True
     return False
-
-
-def find_artist_genre():
-    c.execute("""SELECT DISTINCT artist_id FROM track WHERE artist_name NOT IN
-            (SELECT DISTINCT artist_name FROM artist_genre)""")
-    artists = c.fetchall()
-    for i in artists:
-        artist = spotify.artist(i[0])
-        if artist['genres']:
-            for genre in artist['genres']:
-                with connection:
-                    c.execute("""INSERT INTO artist_genre VALUES (?, ?)""", (artist['name'], genre))
 
 
 def updatetoken():

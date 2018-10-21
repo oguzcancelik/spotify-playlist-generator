@@ -92,9 +92,6 @@ while True:
             continue
     elif choice == "10":
         break
-    elif choice == "11":
-        find_artist_genre()
-        continue
     else:
         print("\nWrong input. Please make another choice.\n")
         continue
