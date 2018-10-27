@@ -7,7 +7,6 @@ from json.decoder import JSONDecodeError
 import random
 import pylast
 import sqlite3
-
 from spotipy import SpotifyException
 
 
@@ -37,23 +36,29 @@ def select_songs(song_number):
             del artist_tracks[randon_number]
 
 
-def get_tracks(album_id):
+def get_tracks(album_ids):
     global artist_tracks
-    album = spotify.album(album_id)
-    for track in album['tracks']['items']:
+    albums = []
+    for i in range(0, len(album_ids), 20):
+        albums += spotify.albums(album_ids[i:i + 20])['albums']
+    for album in albums:
+        tracks = []
+        for track in album['tracks']['items']:
+            tracks.append((track['id'], track['artists'][0]['id'], track['artists'][0]['name'],
+                           album['release_date'][0:4], track['name']))
+            artist_tracks.append(track['id'])
         with connection:
-            c.execute("""INSERT INTO track VALUES(?,?,?,?,?)""",
-                      (track['id'], track['artists'][0]['id'], track['artists'][0]['name'],
-                       album['release_date'][0:4], track['name']))
-        artist_tracks.append(track['id'])
+            c.executemany("""INSERT INTO track VALUES(?,?,?,?,?)""", tracks)
+        tracks.clear()
 
 
 def get_albums(artist_id):
     types = [["album", 50], ["single", 20], ["compilation", 10]]
+    album_ids = []
     for album_type in types:
         albums = spotify.artist_albums(artist_id=artist_id, album_type=album_type[0], limit=album_type[1])
-        for album in albums['items']:
-            get_tracks(album['id'])
+        album_ids += [album['id'] for album in albums['items']]
+    get_tracks(album_ids)
 
 
 def get_by_artist(artist, song_number=30):
@@ -62,11 +67,14 @@ def get_by_artist(artist, song_number=30):
               COLLATE NOCASE ORDER BY RANDOM() LIMIT ?""", (artist, artist, song_number))
     artist_tracks = c.fetchall()
     if artist_tracks:
-        for x in artist_tracks:
-            recommended_tracks.append(x[0])
+        recommended_tracks += [x[0] for x in artist_tracks]
         return True
     try:
-        spotify.artist(artist)
+        artist_result = spotify.artist(artist)
+        if artist_result['genres']:
+            genres = [(artist_result['name'], genre) for genre in artist_result['genres']]
+            with connection:
+                c.executemany("""INSERT INTO artist_genre VALUES (?, ?)""", genres)
     except SpotifyException:
         artist = spotify.search(artist, 1, 0, "artist")
         if artist['artists']['total'] > 0:
@@ -90,12 +98,16 @@ def get_by_related_artists(artist_name):
     if artist['artists']['total'] > 0:
         related_artists = spotify.artist_related_artists(artist['artists']['items'][0]['id'])
         if related_artists['artists']:
-            related_artists['artists'].append({'id': artist['artists']['items'][0]['id']})
+            related_artists['artists'].append(
+                {'id': artist['artists']['items'][0]['id'], 'name': artist['artists']['items'][0]['name']})
+            similar_artists = []
             for related_artist in related_artists['artists']:
-                with connection:
-                    c.execute("""INSERT INTO similar_artists VALUES(?,?)""",
-                              (artist['artists']['items'][0]['name'], related_artist['id']))
+                similar_artists.append((artist['artists']['items'][0]['name'], related_artist['id']))
                 get_by_artist(related_artist['id'], 5)
+                updatetoken()
+            with connection:
+                c.executemany("""INSERT INTO similar_artists VALUES(?,?)""", similar_artists)
+            similar_artists.clear()
             return True
     return False
 
@@ -116,19 +128,23 @@ def get_all_genres():
 
 def get_by_genres(genres):
     global recommended_tracks
+    c.execute("SELECT DISTINCT genre_name FROM genre_popular_tracks")
+    stored_genres = [x[0] for x in c.fetchall()]
     for genre in genres:
-        c.execute("SELECT track_id FROM genre_popular_tracks WHERE genre_name=? COLLATE NOCASE", (genre,))
-        genre_tracks = c.fetchall()
-        if genre_tracks:
-            for x in genre_tracks:
-                recommended_tracks.append(x[0])
+        if genre in stored_genres:
+            c.execute("SELECT track_id FROM genre_popular_tracks WHERE genre_name=? COLLATE NOCASE", (genre,))
+            recommended_tracks += [x[0] for x in c.fetchall()]
             continue
-        # all_genres = spotify.recommendation_genre_seeds()
-        tracks = spotify.recommendations(limit=5, seed_genres=[genre], country="TR")
+        # tracks = spotify.categories()
+        # tracks = spotify.category_playlists(category_id="party")
+        tracks = spotify.recommendations(limit=50, seed_genres=[genre])
+        genre_tracks = []
         for track in tracks['tracks']:
-            with connection:
-                c.execute("""INSERT INTO genre_popular_tracks VALUES(?,?)""", (genre, track['id']))
+            genre_tracks.append((genre, track['id'], track['artists'][0]['name']))
             recommended_tracks.append(track['id'])
+        with connection:
+            c.executemany("""INSERT INTO genre_popular_tracks VALUES(?,?,?)""", genre_tracks)
+        genre_tracks.clear()
     if recommended_tracks:
         return True
     return False
