@@ -41,15 +41,18 @@ def get_tracks(album_ids):
     albums = []
     for i in range(0, len(album_ids), 20):
         albums += spotify.albums(album_ids[i:i + 20])['albums']
+    tracks = []
+    print()
     for album in albums:
-        tracks = []
+        print("     -", album['name'])
         for track in album['tracks']['items']:
             tracks.append((track['id'], track['artists'][0]['id'], track['artists'][0]['name'],
                            album['release_date'][0:4], track['name']))
             artist_tracks.append(track['id'])
-        with connection:
-            c.executemany("""INSERT INTO track VALUES(?,?,?,?,?)""", tracks)
-        tracks.clear()
+    print()
+    with connection:
+        c.executemany("""INSERT INTO track VALUES(?,?,?,?,?)""", tracks)
+    tracks.clear()
 
 
 def get_albums(artist_id):
@@ -67,6 +70,7 @@ def get_by_artist(artist, song_number=30):
               COLLATE NOCASE ORDER BY RANDOM() LIMIT ?""", (artist, artist, song_number))
     artist_tracks = c.fetchall()
     if artist_tracks:
+        print(" ✓")
         recommended_tracks += [x[0] for x in artist_tracks]
         return True
     try:
@@ -95,6 +99,7 @@ def get_by_related_artists(artist_name):
             get_by_artist(artist[0], 5)
         return True
     artist = spotify.search(artist_name, 1, 0, "artist")
+    print("\nArtist:", artist['artists']['items'][0]['name'])
     if artist['artists']['total'] > 0:
         related_artists = spotify.artist_related_artists(artist['artists']['items'][0]['id'])
         if related_artists['artists']:
@@ -102,6 +107,7 @@ def get_by_related_artists(artist_name):
                 {'id': artist['artists']['items'][0]['id'], 'name': artist['artists']['items'][0]['name']})
             similar_artists = []
             for related_artist in related_artists['artists']:
+                print("  Getting", related_artist['name'], end=' ')
                 similar_artists.append((artist['artists']['items'][0]['name'], related_artist['id']))
                 get_by_artist(related_artist['id'], 5)
                 updatetoken()
@@ -130,6 +136,7 @@ def get_by_genres(genres):
     global recommended_tracks
     c.execute("SELECT DISTINCT genre_name FROM genre_popular_tracks")
     stored_genres = [x[0] for x in c.fetchall()]
+    genre_tracks = []
     for genre in genres:
         if genre in stored_genres:
             c.execute("SELECT track_id FROM genre_popular_tracks WHERE genre_name=? COLLATE NOCASE", (genre,))
@@ -138,13 +145,12 @@ def get_by_genres(genres):
         # tracks = spotify.categories()
         # tracks = spotify.category_playlists(category_id="party")
         tracks = spotify.recommendations(limit=50, seed_genres=[genre])
-        genre_tracks = []
         for track in tracks['tracks']:
             genre_tracks.append((genre, track['id'], track['artists'][0]['name']))
             recommended_tracks.append(track['id'])
-        with connection:
-            c.executemany("""INSERT INTO genre_popular_tracks VALUES(?,?,?)""", genre_tracks)
-        genre_tracks.clear()
+    with connection:
+        c.executemany("""INSERT INTO genre_popular_tracks VALUES(?,?,?)""", genre_tracks)
+    genre_tracks.clear()
     if recommended_tracks:
         return True
     return False

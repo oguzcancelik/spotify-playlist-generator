@@ -51,6 +51,7 @@ def delete_duplicates_track():
     c.execute("""SELECT * FROM track GROUP BY artist_name, track_id HAVING COUNT(*) > 1""")
     result = c.fetchall()
     if not result:
+        print("\nNo duplicate songs\n")
         return
     delete_tracks = []
     insert_tracks = []
@@ -69,6 +70,7 @@ def delete_duplicates_similarartists():
     c.execute("""SELECT * FROM similar_artists GROUP BY artist_name, similar_artist_id HAVING COUNT(*) > 1""")
     result = c.fetchall()
     if not result:
+        print("\nNo duplicate songs\n")
         return
     delete_tracks = []
     insert_tracks = []
@@ -87,6 +89,7 @@ def delete_duplicates_songinfo():
     c.execute("""SELECT * FROM song_info GROUP BY artist_name, track_id HAVING COUNT(*) > 1""")
     result = c.fetchall()
     if not result:
+        print("\nNo duplicate songs\n")
         return
     delete_tracks = []
     insert_tracks = []
