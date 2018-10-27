@@ -32,5 +32,25 @@ c.execute("""CREATE TABLE genre_popular_tracks(
     track_id text
     )""")
 
+c.execute("""CREATE TABLE song_info(
+	track_id text,
+	track_name text,
+	artist_id text,
+	artist_name text,
+	acousticness REAL,
+	danceability REAL,
+	energy REAL,
+	duration_ms INTEGER,
+	instrumentalness REAL,
+	key INTEGER,
+	liveness REAL,
+	loudness REAL,
+	mode INTEGER,
+	speechiness REAL,
+	tempo REAL,
+	time_signature INTEGER,
+	valence REAL
+)""")
+
 connection.commit()
 connection.close()
