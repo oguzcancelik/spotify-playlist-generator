@@ -1,4 +1,4 @@
-from spotify import *
+from spotify_gate import *
 
 while True:
     print("\n0 - Recommend by Artist")
