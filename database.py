@@ -5,7 +5,7 @@ import spotipy
 import spotipy.util as util
 from json.decoder import JSONDecodeError
 import sqlite3
-from spotify import set_tracks, overwrite_playlist, add_to_playlist
+from spotify import set_tracks, overwrite_playlist, add_to_playlist, get_by_related_artists
 
 
 def find_genre_songs():
@@ -219,16 +219,21 @@ def find_similar_song(artist, song_name):
 
 
 def get_by_genre():
-    c.execute("""select track_id,track_name,artist_name from track where artist_name in (select distinct artist_name from artist_genre
-                where genre_name LIKE '%turkish pop%' COLLATE NOCASE) ORDER BY RANDOM() LIMIT 200""")
-    result = c.fetchall()
-    songs = []
-    for j in result:
-        print(j[2], "-", j[1])
-        songs.append(j[0])
-    set_tracks(songs)
-    # overwrite_playlist("TR")
-    add_to_playlist("TR")
+    c.execute("""select DISTINCT artist_name from genre_popular_tracks where artist_name not in 
+    (select DISTINCT artist_name from track) ORDER BY RANDOM() LIMIT 5""")
+    for i in c.fetchall():
+        get_by_related_artists(i[0])
+
+    # c.execute("""select track_id,track_name,artist_name from track where artist_name in (select distinct artist_name from artist_genre
+    #             where genre_name LIKE '%turkish pop%' COLLATE NOCASE) ORDER BY RANDOM() LIMIT 200""")
+    # result = c.fetchall()
+    # songs = []
+    # for j in result:
+    #     print(j[2], "-", j[1])
+    #     songs.append(j[0])
+    # set_tracks(songs)
+    # # overwrite_playlist("TR")
+    # add_to_playlist("TR")
 
 
 def updatetoken():

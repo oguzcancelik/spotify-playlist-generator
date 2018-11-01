@@ -2,35 +2,17 @@ import os
 from dotenv import load_dotenv, find_dotenv
 import spotipy
 import spotipy.util as util
+from spotipy import SpotifyException
 import json
 from json.decoder import JSONDecodeError
 import random
-import pylast
 import sqlite3
-from spotipy import SpotifyException
-
-
-def find_tracks_in_spotify():
-    global last_fm_tracks
-    for last_fm_track in last_fm_tracks:
-        c.execute("""SELECT track_id FROM track WHERE artist_name=? COLLATE NOCASE AND track_name=? COLLATE NOCASE""",
-                  (str(last_fm_track.item.get_artist()), str(last_fm_track.item.get_name())))
-        track = c.fetchone()
-        if track:
-            recommended_tracks.append(track[0])
-            continue
-        track = spotify.search(last_fm_track.item, 1, 0, "track")
-        if track['tracks']['total'] > 0:
-            recommended_tracks.append(track['tracks']['items'][0]['id'])
-    if len(recommended_tracks) > 0:
-        return True
-    return False
 
 
 def select_songs(song_number):
     global artist_tracks, recommended_tracks
     for i in range(song_number):
-        if len(artist_tracks) > 0:
+        if artist_tracks:
             randon_number = random.randint(0, len(artist_tracks) - 1)
             recommended_tracks.append(artist_tracks[randon_number])
             del artist_tracks[randon_number]
@@ -39,19 +21,19 @@ def select_songs(song_number):
 def get_tracks(album_ids):
     global artist_tracks
     albums = []
+    tracks = []
     for i in range(0, len(album_ids), 20):
         albums += spotify.albums(album_ids[i:i + 20])['albums']
-    tracks = []
-    print()
     for album in albums:
-        print("     -", album['name'])
         for track in album['tracks']['items']:
             tracks.append((track['id'], track['artists'][0]['id'], track['artists'][0]['name'],
                            album['release_date'][0:4], track['name']))
             artist_tracks.append(track['id'])
-    print()
-    with connection:
-        c.executemany("""INSERT INTO track VALUES(?,?,?,?,?)""", tracks)
+    try:
+        with connection:
+            c.executemany("""INSERT INTO track VALUES(?,?,?,?,?)""", tracks)
+    except sqlite3.IntegrityError:
+        pass
     tracks.clear()
 
 
@@ -67,10 +49,9 @@ def get_albums(artist_id):
 def get_by_artist(artist, song_number=30):
     global artist_tracks, recommended_tracks
     c.execute("""SELECT track_id FROM track WHERE artist_name=? COLLATE NOCASE OR artist_id=?
-              COLLATE NOCASE ORDER BY RANDOM() LIMIT ?""", (artist, artist, song_number))
+              COLLATE NOCASE ORDER BY RANDOM() LIMIT ?""", (artist.upper(), artist.upper(), song_number))
     artist_tracks = c.fetchall()
     if artist_tracks:
-        print(" ✓")
         recommended_tracks += [x[0] for x in artist_tracks]
         return True
     try:
@@ -92,14 +73,14 @@ def get_by_artist(artist, song_number=30):
 
 
 def get_by_related_artists(artist_name):
-    c.execute("SELECT similar_artist_id FROM similar_artists WHERE artist_name=? COLLATE NOCASE", (artist_name,))
+    c.execute("SELECT similar_artist_id FROM similar_artists WHERE artist_name=? COLLATE NOCASE",
+              (artist_name.upper(),))
     related_artists = c.fetchall()
     if related_artists:
         for artist in related_artists:
             get_by_artist(artist[0], 5)
         return True
     artist = spotify.search(artist_name, 1, 0, "artist")
-    print("\nArtist:", artist['artists']['items'][0]['name'])
     if artist['artists']['total'] > 0:
         related_artists = spotify.artist_related_artists(artist['artists']['items'][0]['id'])
         if related_artists['artists']:
@@ -107,10 +88,9 @@ def get_by_related_artists(artist_name):
                 {'id': artist['artists']['items'][0]['id'], 'name': artist['artists']['items'][0]['name']})
             similar_artists = []
             for related_artist in related_artists['artists']:
-                print("  Getting", related_artist['name'], end=' ')
                 similar_artists.append((artist['artists']['items'][0]['name'], related_artist['id']))
                 get_by_artist(related_artist['id'], 5)
-                updatetoken()
+                update_token()
             with connection:
                 c.executemany("""INSERT INTO similar_artists VALUES(?,?)""", similar_artists)
             similar_artists.clear()
@@ -119,11 +99,23 @@ def get_by_related_artists(artist_name):
 
 
 def get_by_top_artists(term):
-    global artist_tracks
     top_artists = spotify.current_user_top_artists(limit=20, offset=0, time_range=term)
     if top_artists['total'] > 0:
         for artist in top_artists['items']:
             get_by_artist(artist['id'], 5)
+        return True
+    return False
+
+
+def get_by_recently_played():
+    recently_played_artists = []
+    recently_played_tracks = spotify.current_user_recently_played()
+    if recently_played_tracks['items']:
+        for track in recently_played_tracks['items']:
+            artist_id = track['track']['artists'][0]['id']
+            if artist_id not in recently_played_artists:
+                recently_played_artists.append(artist_id)
+                get_by_artist(artist_id, 2)
         return True
     return False
 
@@ -142,8 +134,6 @@ def get_by_genres(genres):
             c.execute("SELECT track_id FROM genre_popular_tracks WHERE genre_name=? COLLATE NOCASE", (genre,))
             recommended_tracks += [x[0] for x in c.fetchall()]
             continue
-        # tracks = spotify.categories()
-        # tracks = spotify.category_playlists(category_id="party")
         tracks = spotify.recommendations(limit=50, seed_genres=[genre])
         for track in tracks['tracks']:
             genre_tracks.append((genre, track['id'], track['artists'][0]['name']))
@@ -156,36 +146,14 @@ def get_by_genres(genres):
     return False
 
 
-def get_by_song(artist_name, song_name):
-    # TODO tracks = spotify.recommendations(seed_tracks=["0pPfdjMQYpXlgGYJUrSzyZ"], limit=20)
-    global last_fm_tracks
-    try:
-        last_fm_tracks = pylast.Track(artist_name, song_name, last_fm_network).get_similar(limit=40)
-    except pylast.WSError:
-        return False
-    return find_tracks_in_spotify()
-
-
-def get_by_tag(tag_name):
-    global last_fm_tracks
-    last_fm_tracks = pylast.Tag(name=tag_name, network=last_fm_network).get_top_tracks(cacheable=False, limit=120)
-    if last_fm_tracks is None:
-        return False
-    if len(last_fm_tracks) >= 80:
-        last_fm_tracks = last_fm_tracks[20:120]
-    return find_tracks_in_spotify()
-
-
-def get_by_recently_played():
-    global artist_tracks
-    recently_played_artists = []
-    recently_played_tracks = spotify.current_user_recently_played()
-    if len(recently_played_tracks['items']) > 0:
-        for track in recently_played_tracks['items']:
-            artist_id = track['track']['artists'][0]['id']
-            if artist_id not in recently_played_artists:
-                recently_played_artists.append(artist_id)
-                get_by_artist(artist_id, 2)
+def get_by_artist_genre(artist_name):
+    global recommended_tracks
+    c.execute("""SELECT t.track_id FROM track AS t,artist_genre AS g WHERE g.artist_name = t.artist_name AND
+     g.genre_name IN (SELECT genre_name FROM artist_genre WHERE artist_name=?) ORDER BY RANDOM() LIMIT 40""",
+              (artist_name,))
+    tracks = c.fetchall()
+    if tracks:
+        recommended_tracks = [x[0] for x in tracks]
         return True
     return False
 
@@ -194,10 +162,10 @@ def get_by_new_releases():
     global artist_tracks
     new_releases = spotify.new_releases(country="TR")
     if new_releases['albums']['total'] > 0:
-        for album in new_releases['albums']['items']:
-            get_tracks(album['id'])
-            select_songs(2)
-            artist_tracks.clear()
+        album_ids = [album['id'] for album in new_releases['albums']['items']]
+        get_tracks(album_ids)
+        select_songs(40)
+        artist_tracks.clear()
         return True
     return False
 
@@ -215,27 +183,10 @@ def get_by_playlist(playlist_name):
             artist_names.append(artist_name)
     for i in range(5):
         randon_number = random.randint(0, len(artist_names) - 1)
-        get_by_related_artists(artist_name=artist_names[randon_number], song_number=1)
+        get_by_related_artists(artist_name=artist_names[randon_number])
         if len(artist_names) > 5:
             del artist_names[randon_number]
     return True
-
-
-def get_by_tag_artists(tag_name):
-    global last_fm_tracks
-    not_empty = False
-    artists = pylast.Tag(name=tag_name, network=last_fm_network).get_top_artists(cacheable=False, limit=30)
-    if not artists:
-        return False
-    for artist in artists:
-        last_fm_tracks = pylast.Artist(name=artist.item, network=last_fm_network).get_top_tracks(cacheable=False,
-                                                                                                 limit=3)
-        result = find_tracks_in_spotify()
-        if result:
-            not_empty = True
-    if not_empty:
-        return True
-    return False
 
 
 def get_user_playlists():
@@ -259,26 +210,17 @@ def get_playlist_id(playlist_name, choice=1):
     return playlist['id']
 
 
-def add_to_playlist(playlist_name):
+def add_to_playlist(playlist_name, overwrite=False):
     global playlist_id
-    if len(recommended_tracks) > 0:
+    if recommended_tracks:
         get_user_playlists()
         playlist_id = get_playlist_id(playlist_name)
-        # playlist_id = playlist_name
         random.shuffle(recommended_tracks)
-        for i in range(0, len(recommended_tracks), 100):
-            spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[i:i + 100])
-
-
-def overwrite_playlist(playlist_name):
-    global playlist_id
-    if len(recommended_tracks) > 0:
-        get_user_playlists()
-        playlist_id = get_playlist_id(playlist_name)
-        # playlist_id = playlist_name
-        random.shuffle(recommended_tracks)
-        spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
-        for i in range(100, len(recommended_tracks), 100):
+        start_index = 0
+        if overwrite:
+            spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])
+            start_index = 100
+        for i in range(start_index, len(recommended_tracks), 100):
             spotify.user_playlist_add_tracks("", playlist_id, recommended_tracks[i:i + 100])
 
 
@@ -295,14 +237,14 @@ def set_tracks(songs):
 def play():
     playlist_uri = spotify.user_playlist(user=spotify_username, playlist_id=playlist_id)
     devices = spotify.devices()
-    if len(devices['devices']) > 0:
+    if devices['devices'] and devices['devices'][0]['is_active']:
         spotify.start_playback(context_uri=playlist_uri['uri'])
         spotify.shuffle(state=True)
         return True
     return False
 
 
-def updatetoken():
+def update_token():
     global spotify, token
     try:
         token = util.prompt_for_user_token(spotify_username, scope, client_id, client_secret, redirect_uri)
@@ -321,26 +263,15 @@ redirect_uri = os.environ.get("redirect_uri")
 spotify_username = os.environ.get("spotify_username")
 scope = os.environ.get("scope")
 
-try:
-    token = util.prompt_for_user_token(spotify_username, scope, client_id, client_secret, redirect_uri)
-except(AttributeError, JSONDecodeError):
-    os.remove(f".cache-{spotify_username}")
-    token = util.prompt_for_user_token(spotify_username, scope, client_id, client_secret, redirect_uri)
-spotify = spotipy.Spotify(auth=token)
-
-API_KEY = os.environ.get("API_KEY")
-API_SECRET = os.environ.get("API_SECRET")
-last_fm_username = os.environ.get("last_fm_username")
-password_hash = pylast.md5(os.environ.get("password_hash"))
-last_fm_network = pylast.LastFMNetwork(api_key=API_KEY, api_secret=API_SECRET,
-                                       username=last_fm_username, password_hash=password_hash)
+token = None
+spotify = None
+update_token()
 
 connection = sqlite3.connect('spotify.sqlite3')
 c = connection.cursor()
 
 artist_tracks = []
 recommended_tracks = []
-last_fm_tracks = []
 playlists = []
 playlist_id = ""
 
