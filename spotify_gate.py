@@ -171,6 +171,27 @@ def get_by_new_releases():
     return False
 
 
+def get_by_year(year):
+    global recommended_tracks
+    c.execute("""SELECT track_id FROM track WHERE release_date =? GROUP BY artist_name ORDER BY RANDOM() LIMIT 50""",
+              (year,))
+    tracks = c.fetchall()
+    if tracks:
+        recommended_tracks = [x[0] for x in tracks]
+        return True
+    return False
+
+
+def get_live_tracks():
+    global recommended_tracks
+    c.execute("""SELECT track_id FROM track WHERE track_name LIKE '%(Live%' ORDER BY RANDOM() LIMIT 50""")
+    tracks = c.fetchall()
+    if tracks:
+        recommended_tracks = [x[0] for x in tracks]
+        return True
+    return False
+
+
 def get_by_playlist(playlist_name):
     get_user_playlists()
     playlists_id = get_playlist_id(playlist_name, 0)
