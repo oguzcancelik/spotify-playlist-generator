@@ -131,7 +131,7 @@ def get_by_genres(genres):
     genre_tracks = []
     for genre in genres:
         if genre in stored_genres:
-            c.execute("SELECT track_id FROM genre_popular_tracks WHERE genre_name=? COLLATE NOCASE", (genre,))
+            c.execute("SELECT track_id FROM genre_popular_tracks WHERE genre_name=? COLLATE NOCASE", (genre.upper(),))
             recommended_tracks += [x[0] for x in c.fetchall()]
             continue
         tracks = spotify.recommendations(limit=50, seed_genres=[genre])
@@ -148,9 +148,10 @@ def get_by_genres(genres):
 
 def get_by_artist_genre(artist_name):
     global recommended_tracks
-    c.execute("""SELECT t.track_id FROM track AS t,artist_genre AS g WHERE g.artist_name = t.artist_name AND
-     g.genre_name IN (SELECT genre_name FROM artist_genre WHERE artist_name=?) ORDER BY RANDOM() LIMIT 40""",
-              (artist_name,))
+    c.execute("""SELECT t.track_id FROM track AS t,artist_genre AS g WHERE g.artist_name = t.artist_name AND 
+              g.genre_name IN (SELECT genre_name FROM artist_genre WHERE artist_name=? COLLATE NOCASE or artist_name=? 
+              COLLATE NOCASE or artist_name=? COLLATE NOCASE) GROUP BY t.artist_name ORDER BY RANDOM() LIMIT 50""",
+              (artist_name.upper(), artist_name.lower(), " ".join(x.capitalize() for x in artist_name.split())))
     tracks = c.fetchall()
     if tracks:
         recommended_tracks = [x[0] for x in tracks]
