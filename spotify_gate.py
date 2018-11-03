@@ -173,7 +173,7 @@ def get_by_new_releases():
 
 def get_by_year(year):
     global recommended_tracks
-    c.execute("""SELECT track_id FROM track WHERE release_date =? GROUP BY artist_name ORDER BY RANDOM() LIMIT 50""",
+    c.execute("""SELECT track_id FROM track WHERE release_date=? GROUP BY artist_name ORDER BY RANDOM() LIMIT 50""",
               (year,))
     tracks = c.fetchall()
     if tracks:
@@ -184,7 +184,18 @@ def get_by_year(year):
 
 def get_live_tracks():
     global recommended_tracks
-    c.execute("""SELECT track_id FROM track WHERE track_name LIKE '%(Live%' ORDER BY RANDOM() LIMIT 50""")
+    c.execute("""SELECT track_id FROM track WHERE track_name LIKE '%(Live%' COLLATE NOCASE OR  
+    	track_name LIKE '%live from%' COLLATE NOCASE ORDER BY RANDOM() LIMIT 50""")
+    tracks = c.fetchall()
+    if tracks:
+        recommended_tracks = [x[0] for x in tracks]
+        return True
+    return False
+
+def get_acoustic_tracks():
+    global recommended_tracks
+    c.execute("""SELECT track_id FROM track WHERE track_name LIKE '%acoustic%' COLLATE NOCASE OR  
+    	track_name LIKE '%akustik%' COLLATE NOCASE ORDER BY RANDOM() LIMIT 50""")
     tracks = c.fetchall()
     if tracks:
         recommended_tracks = [x[0] for x in tracks]
