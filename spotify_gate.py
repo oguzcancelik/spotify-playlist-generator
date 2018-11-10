@@ -13,9 +13,9 @@ def select_songs(song_number):
     global artist_tracks, recommended_tracks
     for i in range(song_number):
         if artist_tracks:
-            randon_number = random.randint(0, len(artist_tracks) - 1)
-            recommended_tracks.append(artist_tracks[randon_number])
-            del artist_tracks[randon_number]
+            random_number = random.randint(0, len(artist_tracks) - 1)
+            recommended_tracks.append(artist_tracks[random_number])
+            del artist_tracks[random_number]
 
 
 def get_tracks(album_ids):
@@ -184,18 +184,29 @@ def get_by_year(year):
 
 def get_live_tracks():
     global recommended_tracks
-    c.execute("""SELECT track_id FROM track WHERE track_name LIKE '%(Live%' COLLATE NOCASE OR  
-    	track_name LIKE '%live from%' COLLATE NOCASE ORDER BY RANDOM() LIMIT 50""")
+    c.execute("""SELECT track_id FROM track WHERE track_name LIKE '%(Live%' COLLATE NOCASE OR track_name 
+    LIKE '%live from%' COLLATE NOCASE ORDER BY RANDOM() LIMIT 50""")
     tracks = c.fetchall()
     if tracks:
         recommended_tracks = [x[0] for x in tracks]
         return True
     return False
 
+
 def get_acoustic_tracks():
     global recommended_tracks
-    c.execute("""SELECT track_id FROM track WHERE track_name LIKE '%acoustic%' COLLATE NOCASE OR  
-    	track_name LIKE '%akustik%' COLLATE NOCASE ORDER BY RANDOM() LIMIT 50""")
+    c.execute("""SELECT track_id FROM track WHERE track_name LIKE '%acoustic%' COLLATE NOCASE OR track_name 
+    LIKE '%akustik%' COLLATE NOCASE ORDER BY RANDOM() LIMIT 50""")
+    tracks = c.fetchall()
+    if tracks:
+        recommended_tracks = [x[0] for x in tracks]
+        return True
+    return False
+
+
+def get_random():
+    global recommended_tracks
+    c.execute("""SELECT track_id FROM track ORDER BY RANDOM() LIMIT 50""")
     tracks = c.fetchall()
     if tracks:
         recommended_tracks = [x[0] for x in tracks]
@@ -206,7 +217,7 @@ def get_acoustic_tracks():
 def get_by_playlist(playlist_name):
     get_user_playlists()
     playlists_id = get_playlist_id(playlist_name, 0)
-    if playlist_id == "":
+    if playlists_id is "":
         return False
     artist_names = []
     tracks = spotify.user_playlist_tracks(spotify_username, playlists_id, fields="items")

@@ -12,7 +12,8 @@ while True:
     print("8 - Recommend by Year")
     print("9 - Recommend Live Tracks")
     print("10 - Recommend Acoustic Tracks")
-    print("11 - Exit \n")
+    print("11 - Recommend Random Tracks")
+    print("12 - Exit \n")
     choice = input("Your Choice: ")
     if choice == "0":
         artist = input("\nType artist name: ")
@@ -98,6 +99,11 @@ while True:
             print("\n\nSongs not found. Please make another choice.\n\n")
             continue
     elif choice == "11":
+        result = get_random()
+        if not result:
+            print("\n\nSongs not found. Please make another choice.\n\n")
+            continue
+    elif choice == "12":
         break
     else:
         print("\nWrong input. Please make another choice.\n")
