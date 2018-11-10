@@ -165,7 +165,7 @@ def get_by_new_releases():
     if new_releases['albums']['total'] > 0:
         album_ids = [album['id'] for album in new_releases['albums']['items']]
         get_tracks(album_ids)
-        select_songs(40)
+        select_songs(50)
         artist_tracks.clear()
         return True
     return False
