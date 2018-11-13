@@ -48,8 +48,8 @@ def get_albums(artist_id):
 
 def get_by_artist(artist, song_number=30):
     global artist_tracks, recommended_tracks
-    c.execute("""SELECT track_id FROM track WHERE artist_name=? COLLATE NOCASE OR artist_id=?
-              COLLATE NOCASE ORDER BY RANDOM() LIMIT ?""", (artist.upper(), artist.upper(), song_number))
+    c.execute("""SELECT track_id FROM track WHERE artist_name=? COLLATE NOCASE OR artist_id=? 
+    ORDER BY RANDOM() LIMIT ?""", (artist.upper(), artist, song_number))
     artist_tracks = c.fetchall()
     if artist_tracks:
         recommended_tracks += [x[0] for x in artist_tracks]
@@ -120,6 +120,18 @@ def get_by_recently_played():
     return False
 
 
+def get_by_song(artist_name, track_name):
+    global recommended_tracks
+    track = spotify.search(q=artist_name + " " + track_name, limit=1, type="track")
+    if track['tracks']['items']:
+        track_id = track['tracks']['items'][0]['id']
+        tracks = spotify.recommendations(seed_tracks=[track_id], limit=50)
+        if tracks['tracks']:
+            recommended_tracks = [x['id'] for x in tracks['tracks']]
+            return True
+    return False
+
+
 def get_all_genres():
     return spotify.recommendation_genre_seeds()['genres']
 
@@ -156,6 +168,18 @@ def get_by_artist_genre(artist_name):
     if tracks:
         recommended_tracks = [x[0] for x in tracks]
         return True
+    return False
+
+
+def get_by_artist_recommendations(artist_name):
+    global recommended_tracks
+    artist = spotify.search(q=artist_name, limit=1, type="artist")
+    if artist['artists']['items']:
+        artist_id = artist['artists']['items'][0]['id']
+        tracks = spotify.recommendations(seed_artists=[artist_id], limit=50)
+        if tracks['tracks']:
+            recommended_tracks = [x['id'] for x in tracks['tracks']]
+            return True
     return False
 
 
@@ -308,7 +332,7 @@ spotify_username = os.environ.get("spotify_username")
 scope = os.environ.get("scope")
 
 token = None
-spotify = None
+spotify = spotipy.Spotify
 update_token()
 
 connection = sqlite3.connect('spotify.sqlite3')
@@ -319,5 +343,5 @@ recommended_tracks = []
 playlists = []
 playlist_id = ""
 
-# print(json.dumps(artist, sort_keys=True, indent=4))
+# print(json.dumps("", sort_keys=True, indent=4, ensure_ascii=False))
 # quit()

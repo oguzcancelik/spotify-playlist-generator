@@ -6,15 +6,17 @@ while True:
     print("     1 - Related Artists")
     print("     2 - Top Played Artists")
     print("     3 - Recently Played Artists")
-    print("     4 - Genre")
-    print("     5 - New Releases")
-    print("     6 - Playlist")
-    print("     7 - Artist Genre")
-    print("     8 - Year")
-    print("     9 - Live Tracks")
-    print("     10 - Acoustic Tracks")
-    print("     11 - Random Tracks")
-    print("     12 - Exit \n")
+    print("     4 - Song")
+    print("     5 - Genre")
+    print("     6 - New Releases")
+    print("     7 - Playlist")
+    print("     8 - Artist Genre")
+    print("     9 - Year")
+    print("     10 - Live Tracks")
+    print("     11 - Acoustic Tracks")
+    print("     12 - Random Tracks")
+    print("     13 - Artist Recommendations")
+    print("     14 - Exit \n")
     choice = input("Your Choice: ")
     if choice == "0":
         artist = input("\nType artist name: ")
@@ -54,6 +56,13 @@ while True:
             print("\n\nRecently played songs not found. Please make another choice.\n\n")
             continue
     elif choice == "4":
+        artist = input("\nType artist name: ")
+        song = input("\nType song name: ")
+        result = get_by_song(artist, song)
+        if not result:
+            print("\n\nTrack or recommendations not found. Please make another choice.\n\n")
+            continue
+    elif choice == "5":
         genres = input("\nType genres: ")
         result = get_by_genres(genres.split())
         if not result:
@@ -66,45 +75,51 @@ while True:
                     print(genres[i], "|", genres[i + 1], "|", genres[i + 2], "|", genres[i + 3], "|", genres[i + 4],
                           "|", genres[i + 5])
             continue
-    elif choice == "5":
+    elif choice == "6":
         result = get_by_new_releases()
         if not result:
             print("\n\nNew releases not found. Please make another choice.\n\n")
             continue
-    elif choice == "6":
+    elif choice == "7":
         name = input("\nType playlist name: ")
         result = get_by_playlist(name)
         if not result:
             print("\n\nPlaylist not found or it's empty. Please make another choice.\n\n")
             continue
-    elif choice == "7":
+    elif choice == "8":
         artist = input("\nType artist name: ")
         result = get_by_artist_genre(artist)
         if not result:
             print("\n\nArtist or genres not found. Please make another choice.\n\n")
             continue
-    elif choice == "8":
+    elif choice == "9":
         year = input("\nType year: ")
         result = get_by_year(year)
         if not result:
             print("\n\nSongs not found. Please make another choice.\n\n")
             continue
-    elif choice == "9":
+    elif choice == "10":
         result = get_live_tracks()
         if not result:
             print("\n\nSongs not found. Please make another choice.\n\n")
             continue
-    elif choice == "10":
+    elif choice == "11":
         result = get_acoustic_tracks()
         if not result:
             print("\n\nSongs not found. Please make another choice.\n\n")
             continue
-    elif choice == "11":
+    elif choice == "12":
         result = get_random()
         if not result:
             print("\n\nSongs not found. Please make another choice.\n\n")
             continue
-    elif choice == "12":
+    elif choice == "13":
+        artist = input("\nType artist name: ")
+        result = get_by_artist_recommendations(artist)
+        if not result:
+            print("\n\nArtist or recommendations not found. Please make another choice.\n\n")
+            continue
+    elif choice == "14":
         break
     else:
         print("\nWrong input. Please make another choice.\n")

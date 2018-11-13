@@ -1,7 +1,9 @@
 *.json
-*.txt
+*.log
 .env
 __pycache__
 .cache*
 *.db
 *.sqlite3
+last_fm/
+json/

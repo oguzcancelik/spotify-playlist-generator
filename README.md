@@ -14,15 +14,17 @@
          1 - Related Artists
          2 - Top Played Artists
          3 - Recently Played Artists
-         4 - Genre
-         5 - New Releases
-         6 - Playlist
-         7 - Artist Genre
-         8 - Year
-         9 - Live Tracks
-         10 - Acoustic Tracks
-         11 - Random Tracks
-         12 - Exit
+         4 - Song
+         5 - Genre
+         6 - New Releases
+         7 - Playlist
+         8 - Artist Genre
+         9 - Year
+         10 - Live Tracks
+         11 - Acoustic Tracks
+         12 - Random Tracks
+         13 - Artist Recommendations
+         14 - Exit
 
     Your Choice:
 ```
@@ -34,14 +36,16 @@
 | 1 - Related Artists | tracks of entered artist and him/her related artists | Brandon Flowers| 105 |
 | 2 - Top Played Artists | tracks of most played artists of the user | | 100 |
 | 3 - Recently Played Artists | tracks of recently played artists of the user | | 100 |
-| 4 - Genre | popular tracks of entered genres | british acoustic | 50 |
-| 5 - New Releases | tracks from recently released albums | | 50 |
-| 6 - Playlist | tracks of artists of given playlist | sleep |
-| 7 - Artist Genre | tracks of artists who share the same genre with given artist | Radiohead | 50 |
-| 8 - Year | tracks released in given year | 2007 | 50 |
-| 9 - Live Tracks | live tracks | | 50 |
-| 10 - Acoustic Tracks | acoustic tracks | |50 |
-| 11 - Random Tracks | random tracks | | 50 |
+| 4 - Song | similar tracks of entered song | Jack Savoretti - Written in Scars | 50 |
+| 5 - Genre | popular tracks of entered genres | british acoustic | 50 |
+| 6 - New Releases | tracks from recently released albums | | 50 |
+| 7 - Playlist | tracks of artists of given playlist | sleep |
+| 8 - Artist Genre | tracks of artists who share the same genre with given artist | Radiohead | 50 |
+| 9 - Year | tracks released in given year | 2007 | 50 |
+| 10 - Live Tracks | live tracks | | 50 |
+| 11 - Acoustic Tracks | acoustic tracks | |50 |
+| 12 - Random Tracks | random tracks | | 50 |
+| 13 - Artist Recommendations | spotify recommendations of entered artist | Morrissey | 50 |
 
 - After making a choice, asks to the user to add tracks to a playlist.
 ```sh
@@ -51,15 +55,17 @@
          1 - Related Artists
          2 - Top Played Artists
          3 - Recently Played Artists
-         4 - Genre
-         5 - New Releases
-         6 - Playlist
-         7 - Artist Genre
-         8 - Year
-         9 - Live Tracks
-         10 - Acoustic Tracks
-         11 - Random Tracks
-         12 - Exit
+         4 - Song
+         5 - Genre
+         6 - New Releases
+         7 - Playlist
+         8 - Artist Genre
+         9 - Year
+         10 - Live Tracks
+         11 - Acoustic Tracks
+         12 - Random Tracks
+         13 - Artist Recommendations
+         14 - Exit
 
     Your Choice: 1
 
