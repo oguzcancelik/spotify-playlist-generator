@@ -1,5 +1,11 @@
 from spotify_gate import *
 
+def validate_input(user_input):
+    if "%" in user_input or "\"" in user_input:
+        print("\nInput can't contain % or \" signs.\n")
+        return False
+    return True
+
 while True:
     print("\nGenerate by:")
     print("     0 - Artist")
@@ -20,12 +26,16 @@ while True:
     choice = input("Your Choice: ")
     if choice == "0":
         artist = input("\nType artist name: ")
+        if not validate_input(artist):
+            continue
         result = get_by_artist(artist)
         if not result:
             print("\n\nArtist not found. Please make another choice.\n\n")
             continue
     elif choice == "1":
         artist = input("\nType artist name: ")
+        if not validate_input(artist):
+            continue
         result = get_by_related_artists(artist)
         if not result:
             print("\n\nArtist or related artists not found. Please make another choice.\n\n")
@@ -36,6 +46,8 @@ while True:
             print("1 - Medium Term")
             print("2 - Long Term\n")
             term = input("Choose term: ")
+            if not validate_input(artist):
+                continue
             if term == "0":
                 term = "short_term"
             elif term == "1":
@@ -57,13 +69,19 @@ while True:
             continue
     elif choice == "4":
         artist = input("\nType artist name: ")
+        if not validate_input(artist):
+            continue
         song = input("\nType song name: ")
         result = get_by_song(artist, song)
+        if not validate_input(song):
+            continue
         if not result:
             print("\n\nTrack or recommendations not found. Please make another choice.\n\n")
             continue
     elif choice == "5":
         genres = input("\nType genres: ")
+        if not validate_input(genres):
+            continue
         result = get_by_genres(genres.split())
         if not result:
             print("\n\nGenres not found. Please make another choice.\n")
@@ -82,18 +100,24 @@ while True:
             continue
     elif choice == "7":
         name = input("\nType playlist name: ")
+        if not validate_input(artist):
+            continue
         result = get_by_playlist(name)
         if not result:
             print("\n\nPlaylist not found or it's empty. Please make another choice.\n\n")
             continue
     elif choice == "8":
         artist = input("\nType artist name: ")
+        if not validate_input(artist):
+            continue
         result = get_by_artist_genre(artist)
         if not result:
             print("\n\nArtist or genres not found. Please make another choice.\n\n")
             continue
     elif choice == "9":
         year = input("\nType year: ")
+        if not validate_input(year):
+            continue
         result = get_by_year(year)
         if not result:
             print("\n\nSongs not found. Please make another choice.\n\n")
@@ -115,6 +139,8 @@ while True:
             continue
     elif choice == "13":
         artist = input("\nType artist name: ")
+        if not validate_input(artist):
+            continue
         result = get_by_artist_recommendations(artist)
         if not result:
             print("\n\nArtist or recommendations not found. Please make another choice.\n\n")
