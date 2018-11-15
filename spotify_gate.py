@@ -7,6 +7,7 @@ import json
 from json.decoder import JSONDecodeError
 import random
 import sqlite3
+import logging
 
 
 def select_songs(song_number):
@@ -19,12 +20,13 @@ def select_songs(song_number):
 
 
 def get_tracks(album_ids):
-    global artist_tracks
+    global artist_tracks, logger
     albums = []
     tracks = []
     for i in range(0, len(album_ids), 20):
         albums += spotify.albums(album_ids[i:i + 20])['albums']
     for album in albums:
+        logger.info("ALBUM - Getting: " + album['artists'][0]['name'] + " - " + album['name'])
         for track in album['tracks']['items']:
             tracks.append((track['id'], track['artists'][0]['id'], track['artists'][0]['name'],
                            album['release_date'][0:4], track['name']))
@@ -46,82 +48,95 @@ def get_albums(artist_id):
     get_tracks(album_ids)
 
 
-def get_by_artist(artist, song_number=30):
-    global artist_tracks, recommended_tracks
-    c.execute("""SELECT track_id FROM track WHERE artist_name=? COLLATE NOCASE OR artist_id=? 
-    ORDER BY RANDOM() LIMIT ?""", (artist.upper(), artist, song_number))
+def get_by_artist(artist_name=None, artist_id=None, song_number=30):
+    global artist_tracks, recommended_tracks, logger
+    if artist_name:
+        c.execute("""SELECT track_id FROM track WHERE artist_name LIKE ? COLLATE NOCASE ORDER BY RANDOM() LIMIT ?""",
+                  (artist_name.upper(), song_number))
+    else:
+        c.execute("""SELECT track_id FROM track WHERE artist_id LIKE ? ORDER BY RANDOM() LIMIT ?""",
+                  (artist_id, song_number))
     artist_tracks = c.fetchall()
     if artist_tracks:
         recommended_tracks += [x[0] for x in artist_tracks]
         return True
-    try:
-        artist_result = spotify.artist(artist)
-        if artist_result['genres']:
-            genres = [(artist_result['name'], genre) for genre in artist_result['genres']]
-            with connection:
-                c.executemany("""INSERT INTO artist_genre VALUES (?, ?)""", genres)
-    except SpotifyException:
-        artist = spotify.search(artist, 1, 0, "artist")
+    if not artist_id:
+        artist = spotify.search(artist_name, 1, 0, "artist")
         if artist['artists']['total'] > 0:
-            artist = artist['artists']['items'][0]['id']
+            artist_id = artist['artists']['items'][0]['id']
+            logger.info("ARTIST - Getting by Name: " + artist['artists']['items'][0]['name'])
         else:
+            logger.error("ARTIST - " + artist_name + " not found.")
             return False
-    get_albums(artist)
+    else:
+        logger.info("ARTIST - Getting by ID: " + artist_id)
+    get_albums(artist_id)
     select_songs(song_number)
     artist_tracks.clear()
     return True
 
 
 def get_by_related_artists(artist_name):
+    global logger
     c.execute("SELECT similar_artist_id FROM similar_artists WHERE artist_name=? COLLATE NOCASE",
               (artist_name.upper(),))
     related_artists = c.fetchall()
     if related_artists:
         for artist in related_artists:
-            get_by_artist(artist[0], 5)
+            get_by_artist(artist_id=artist[0], song_number=5)
         return True
     artist = spotify.search(artist_name, 1, 0, "artist")
     if artist['artists']['total'] > 0:
         related_artists = spotify.artist_related_artists(artist['artists']['items'][0]['id'])
         if related_artists['artists']:
+            logger.info("RELATED ARTISTS - Getting: " + artist['artists']['items'][0]['name'])
             related_artists['artists'].append(
                 {'id': artist['artists']['items'][0]['id'], 'name': artist['artists']['items'][0]['name']})
             similar_artists = []
             for related_artist in related_artists['artists']:
                 similar_artists.append((artist['artists']['items'][0]['name'], related_artist['id']))
-                get_by_artist(related_artist['id'], 5)
+                get_by_artist(artist_id=related_artist['id'], song_number=5)
                 update_token()
             with connection:
                 c.executemany("""INSERT INTO similar_artists VALUES(?,?)""", similar_artists)
             similar_artists.clear()
             return True
+        logger.error("RELATED ARTISTS - Getting:" + artist_name + ": Related artists not found.")
+        return False
+    logger.error("ARTIST - " + artist_name + " not found.")
     return False
 
 
 def get_by_top_artists(term):
+    global logger
     top_artists = spotify.current_user_top_artists(limit=20, offset=0, time_range=term)
     if top_artists['total'] > 0:
+        logger.info("TOP ARTISTS - Getting: " + spotify_username)
         for artist in top_artists['items']:
             get_by_artist(artist['id'], 5)
         return True
+    logger.error("TOP ARTISTS - Can't get top artists: " + spotify_username)
     return False
 
 
 def get_by_recently_played():
+    global logger
     recently_played_artists = []
     recently_played_tracks = spotify.current_user_recently_played()
     if recently_played_tracks['items']:
+        logger.info("RECENTLY PLAYED ARTISTS - Getting for " + spotify_username)
         for track in recently_played_tracks['items']:
             artist_id = track['track']['artists'][0]['id']
             if artist_id not in recently_played_artists:
                 recently_played_artists.append(artist_id)
                 get_by_artist(artist_id, 2)
         return True
+    logger.error("RECENTLY PLAYED ARTISTS  - Can't get recently played artists: " + spotify_username)
     return False
 
 
 def get_by_song(artist_name, track_name):
-    global recommended_tracks
+    global recommended_tracks, logger
     track = spotify.search(q=artist_name + " " + track_name, limit=1, type="track")
     if track['tracks']['items']:
         track_id = track['tracks']['items'][0]['id']
@@ -178,7 +193,7 @@ def get_by_artist_recommendations(artist_name):
         artist_id = artist['artists']['items'][0]['id']
         tracks = spotify.recommendations(seed_artists=[artist_id], limit=50)
         if tracks['tracks']:
-            recommended_tracks = [x['id'] for x in tracks['tracks']]
+            recommended_tracks += [x['id'] for x in tracks['tracks']]
             return True
     return False
 
@@ -337,6 +352,10 @@ update_token()
 
 connection = sqlite3.connect('spotify.sqlite3')
 c = connection.cursor()
+
+LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
+logging.basicConfig(filename="logger.log", level=logging.INFO, format=LOG_FORMAT, filemode="w")
+logger = logging.getLogger()
 
 artist_tracks = []
 recommended_tracks = []

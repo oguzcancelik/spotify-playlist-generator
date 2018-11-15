@@ -1,10 +1,12 @@
 from spotify_gate import *
 
+
 def validate_input(user_input):
     if "%" in user_input or "\"" in user_input:
         print("\nInput can't contain % or \" signs.\n")
         return False
     return True
+
 
 while True:
     print("\nGenerate by:")
@@ -46,7 +48,7 @@ while True:
             print("1 - Medium Term")
             print("2 - Long Term\n")
             term = input("Choose term: ")
-            if not validate_input(artist):
+            if not validate_input(term):
                 continue
             if term == "0":
                 term = "short_term"
@@ -100,7 +102,7 @@ while True:
             continue
     elif choice == "7":
         name = input("\nType playlist name: ")
-        if not validate_input(artist):
+        if not validate_input(name):
             continue
         result = get_by_playlist(name)
         if not result:
