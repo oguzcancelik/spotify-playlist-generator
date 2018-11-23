@@ -2,9 +2,11 @@ from spotify_gate import *
 
 
 def validate_input(user_input):
-    if "%" in user_input or "\"" in user_input:
-        print("\nInput can't contain % or \" signs.\n")
-        return False
+    chars = ["%", "\"", "\\", "/", "<", ">", "(", ")", "UNION"]
+    for x in chars:
+        if x in user_input:
+            print("\nInput can't contain '" + x + "'.\n")
+            return False
     return True
 
 
@@ -24,7 +26,8 @@ while True:
     print("     11 - Acoustic Tracks")
     print("     12 - Random Tracks")
     print("     13 - Artist Recommendations")
-    print("     14 - Exit \n")
+    print("     14 - Keyword")
+    print("     15 - Exit \n")
     choice = input("Your Choice: ")
     if choice == "0":
         artist = input("\nType artist name: ")
@@ -148,6 +151,14 @@ while True:
             print("\n\nArtist or recommendations not found. Please make another choice.\n\n")
             continue
     elif choice == "14":
+        keyword = input("\nType keyword: ")
+        if not validate_input(keyword):
+            continue
+        result = get_by_keyword(keyword)
+        if not result:
+            print("\n\nArtist or recommendations not found. Please make another choice.\n\n")
+            continue
+    elif choice == "15":
         break
     else:
         print("\nWrong input. Please make another choice.\n")

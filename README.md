@@ -1,6 +1,6 @@
 # spotify playlist generator
 
-- It's a command-line program for generating platlists based on user choice.
+- It's a command-line program for generating playlists based on user choice.
 
 - Add your spotify username, client_id and client_secret to the .env file and start using.
 
@@ -24,7 +24,8 @@
          11 - Acoustic Tracks
          12 - Random Tracks
          13 - Artist Recommendations
-         14 - Exit
+         14 - Keyword
+         15 - Exit
 
     Your Choice:
 ```
@@ -46,6 +47,7 @@
 | 11 - Acoustic Tracks | acoustic tracks | |50 |
 | 12 - Random Tracks | random tracks | | 50 |
 | 13 - Artist Recommendations | spotify recommendations of entered artist | Morrissey | 50 |
+| 14 - Keyword | tracks containing entered keyword | love | 50 |
 
 - After making a choice, asks to the user to add tracks to a playlist.
 ```sh
@@ -65,7 +67,8 @@
          11 - Acoustic Tracks
          12 - Random Tracks
          13 - Artist Recommendations
-         14 - Exit
+         14 - Keyword
+         15 - Exit
 
     Your Choice: 1
 

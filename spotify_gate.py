@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv, find_dotenv
 import spotipy
 import spotipy.util as util
-from spotipy import SpotifyException
 import json
 from json.decoder import JSONDecodeError
 import random
@@ -31,12 +30,10 @@ def get_tracks(album_ids):
             tracks.append((track['id'], track['artists'][0]['id'], track['artists'][0]['name'],
                            album['release_date'][0:4], track['name']))
             artist_tracks.append(track['id'])
-    try:
+    if tracks:
         with connection:
             c.executemany("""INSERT INTO track VALUES(?,?,?,?,?)""", tracks)
-    except sqlite3.IntegrityError:
-        pass
-    tracks.clear()
+        tracks.clear()
 
 
 def get_albums(artist_id):
@@ -142,8 +139,9 @@ def get_by_song(artist_name, track_name):
         track_id = track['tracks']['items'][0]['id']
         tracks = spotify.recommendations(seed_tracks=[track_id], limit=50)
         if tracks['tracks']:
-            recommended_tracks = [x['id'] for x in tracks['tracks']]
+            recommended_tracks += [x['id'] for x in tracks['tracks']]
             return True
+        recommended_tracks.append(track_id)
     return False
 
 
@@ -246,6 +244,17 @@ def get_acoustic_tracks():
 def get_random():
     global recommended_tracks
     c.execute("""SELECT track_id FROM track ORDER BY RANDOM() LIMIT 50""")
+    tracks = c.fetchall()
+    if tracks:
+        recommended_tracks = [x[0] for x in tracks]
+        return True
+    return False
+
+
+def get_by_keyword(keyword):
+    global recommended_tracks
+    c.execute("""SELECT track_id FROM track WHERE track_name LIKE ? GROUP BY artist_name ORDER BY RANDOM() LIMIT 50""",
+              ("%" + keyword + "%",))
     tracks = c.fetchall()
     if tracks:
         recommended_tracks = [x[0] for x in tracks]
