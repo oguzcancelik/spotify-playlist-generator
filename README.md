@@ -2,7 +2,7 @@
 
 - It's a command-line program for generating playlists based on user choice.
 
-- Add your spotify username, client_id and client_secret to the .env file and start using.
+- Add your spotify username, client_id, client_secret and redirect_uri to the .env file and start using.
 
 - Database is empty in the first place so it may run a little slow. Start searching for your favorite artists and they'll be automatically saved to the database and program will run faster and faster.
 
@@ -25,7 +25,7 @@
          12 - Random Tracks
          13 - Artist Recommendations
          14 - Keyword
-         15 - Exit
+         E - Exit
 
     Your Choice:
 ```
@@ -68,7 +68,7 @@
          12 - Random Tracks
          13 - Artist Recommendations
          14 - Keyword
-         15 - Exit
+         E - Exit
 
     Your Choice: 1
 

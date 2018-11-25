@@ -16,9 +16,10 @@ def select_songs(song_number):
             random_number = random.randint(0, len(artist_tracks) - 1)
             recommended_tracks.append(artist_tracks[random_number])
             del artist_tracks[random_number]
+    random.shuffle(recommended_tracks)
 
 
-def get_tracks(album_ids):
+def get_tracks(album_ids, write_to_db=True):
     global artist_tracks, logger
     albums = []
     tracks = []
@@ -30,7 +31,7 @@ def get_tracks(album_ids):
             tracks.append((track['id'], track['artists'][0]['id'], track['artists'][0]['name'],
                            album['release_date'][0:4], track['name']))
             artist_tracks.append(track['id'])
-    if tracks:
+    if tracks and write_to_db:
         with connection:
             c.executemany("""INSERT INTO track VALUES(?,?,?,?,?)""", tracks)
         tracks.clear()
@@ -139,9 +140,9 @@ def get_by_song(artist_name, track_name):
         track_id = track['tracks']['items'][0]['id']
         tracks = spotify.recommendations(seed_tracks=[track_id], limit=50)
         if tracks['tracks']:
+            recommended_tracks.append(track_id)
             recommended_tracks += [x['id'] for x in tracks['tracks']]
             return True
-        recommended_tracks.append(track_id)
     return False
 
 
@@ -198,10 +199,10 @@ def get_by_artist_recommendations(artist_name):
 
 def get_by_new_releases():
     global artist_tracks
-    new_releases = spotify.new_releases(country="TR")
+    new_releases = spotify.new_releases()
     if new_releases['albums']['total'] > 0:
         album_ids = [album['id'] for album in new_releases['albums']['items']]
-        get_tracks(album_ids)
+        get_tracks(album_ids=album_ids, write_to_db=False)
         select_songs(50)
         artist_tracks.clear()
         return True
@@ -221,8 +222,13 @@ def get_by_year(year):
 
 def get_live_tracks():
     global recommended_tracks
-    c.execute("""SELECT track_id FROM track WHERE track_name LIKE '%(Live%' COLLATE NOCASE OR track_name 
-    LIKE '%live from%' COLLATE NOCASE ORDER BY RANDOM() LIMIT 50""")
+    c.execute("""SELECT track_id FROM track WHERE 
+        track_name LIKE '%(Live%' COLLATE NOCASE OR 
+        track_name LIKE '%live from%' COLLATE NOCASE OR 
+        track_name LIKE '%live in%' COLLATE NOCASE OR
+        track_name LIKE '%live at%' COLLATE NOCASE OR
+        track_name LIKE '%- live%' COLLATE NOCASE
+        ORDER BY RANDOM() LIMIT 50""")
     tracks = c.fetchall()
     if tracks:
         recommended_tracks = [x[0] for x in tracks]
@@ -243,7 +249,7 @@ def get_acoustic_tracks():
 
 def get_random():
     global recommended_tracks
-    c.execute("""SELECT track_id FROM track ORDER BY RANDOM() LIMIT 50""")
+    c.execute("""SELECT track_id FROM track ORDER BY RANDOM() LIMIT 1000""")
     tracks = c.fetchall()
     if tracks:
         recommended_tracks = [x[0] for x in tracks]
@@ -307,7 +313,6 @@ def add_to_playlist(playlist_name, overwrite=False):
     if recommended_tracks:
         get_user_playlists()
         playlist_id = get_playlist_id(playlist_name)
-        random.shuffle(recommended_tracks)
         start_index = 0
         if overwrite:
             spotify.user_playlist_replace_tracks("", playlist_id, recommended_tracks[:100])

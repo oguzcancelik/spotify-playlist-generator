@@ -11,23 +11,23 @@ def validate_input(user_input):
 
 
 while True:
-    print("\nGenerate by:")
-    print("     0 - Artist")
-    print("     1 - Related Artists")
-    print("     2 - Top Played Artists")
-    print("     3 - Recently Played Artists")
-    print("     4 - Song")
-    print("     5 - Genre")
-    print("     6 - New Releases")
-    print("     7 - Playlist")
-    print("     8 - Artist Genre")
-    print("     9 - Year")
-    print("     10 - Live Tracks")
-    print("     11 - Acoustic Tracks")
-    print("     12 - Random Tracks")
-    print("     13 - Artist Recommendations")
-    print("     14 - Keyword")
-    print("     15 - Exit \n")
+    print("""\nGenerate by:
+    0 - Artist
+    1 - Related Artists
+    2 - Top Played Artists
+    3 - Recently Played Artists
+    4 - Song
+    5 - Genre
+    6 - New Release
+    7 - Playlist
+    8 - Artist Genre
+    9 - Year
+    10 - Live Tracks
+    11 - Acoustic Tracks
+    12 - Random Tracks
+    13 - Artist Recommendations
+    14 - Keyword
+    E - Exit\n""")
     choice = input("Your Choice: ")
     if choice == "0":
         artist = input("\nType artist name: ")
@@ -158,7 +158,7 @@ while True:
         if not result:
             print("\n\nArtist or recommendations not found. Please make another choice.\n\n")
             continue
-    elif choice == "15":
+    elif choice == "e" or choice == "E":
         break
     else:
         print("\nWrong input. Please make another choice.\n")
